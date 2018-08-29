@@ -5,7 +5,7 @@ library(readr)
 library(dplyr)
 library(tigris) #Added this one per Zev's instructions below
 
-myDrive  <- "H:"                            
+myDrive  <- "E:"                            
 myPlace  <- paste0(myDrive,"/0.CBD/myUpstream")  
 
 
@@ -21,8 +21,17 @@ d.mssa00  <- read_csv(path(myPlace,"censusTracts/myData","mssa00.csv"))  %>%
             select(GEOID,COUNTY,POP2000,POP2000CIV)
 d.mssa00  <- read_csv(path(myPlace,"censusTracts/myData","mssa00.csv")) %>%
                   select(GEOID,COUNTY,POP2000,POP2000CIV)
+
+
 d.mssa13 <- read_csv(path(myPlace,"censusTracts/myData","mssa13.csv")) %>%
-                select(GEOID,COUNTY,POP2013,POP2013CIV)
+            mutate(GEOID      = paste0("0",GEOID),
+                   county     = COUNTY,
+                   inMSSA13   = 1,  # this creates the indicator variable for this data set
+                   POP2013    = pop2013,
+                   POP2013CIV = pop2013civ) %>%
+            select(GEOID,county,inMSSA13,POP2013,POP2013CIV)
+
+
 d.pov <- read_csv(path(myPlace,"censusTracts/myData","pov_2006_10.csv")) %>%
                 select(GEOID,COUNTY)
 d.group <- read_csv(path(myPlace,"censusTracts/myData","SVI_CDC_group_living.csv")) %>%
