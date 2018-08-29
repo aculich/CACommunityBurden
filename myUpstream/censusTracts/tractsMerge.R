@@ -1,4 +1,3 @@
-test
 #Read and merge shape, death, pop and other files
 
 library(fs)
@@ -53,8 +52,7 @@ d.raw      <- read_csv(path(myPlace,"censusTracts/myData","rawDeaths.csv"),col_t
 #The package tigris has a nice little merge function to do the sometimes difficult merge between the spatial and tabular data.
 merged<- geo_join(d.shape, d.correct, d.mssa00, d.mssa13, d.pov, d.group, "GEOID", "GEOID")
 #merged<- geo_join(d.shape, d.correct, d.mssa00, d.mssa13, d.pov, d.group, "GEOID", "GEOID", "GEOID", "GEOID", "GEOID", "GEOID")
-# there are some tracts with no land that we should exclude:
-merged <- merged[merged$ALAND>0,]
+# Could exclude tracts with no land but Michael says not for now: merged <- merged[merged$ALAND>0,]
 
 
 
