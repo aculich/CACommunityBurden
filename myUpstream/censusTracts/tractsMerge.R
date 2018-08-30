@@ -5,50 +5,60 @@ library(readr)
 library(dplyr)
 library(tigris) #Added this one per Zev's instructions below
 
-myDrive  <- "E:"                            
+myDrive  <- "h:"                            
 myPlace  <- paste0(myDrive,"/0.CBD/myUpstream")  
 
 
-#R should usually be able to detect character vs. numeric automatically based on first 1000 rows (?) 
-#but maybe Michael added col types = character (c) or number(n) because deaths file has a lot of empty cells
-#Changed from "ccnnn"
-d.correct <- read_csv(path(myPlace,"censusTracts/myData","Deaths_County_Corrected.csv"),col_types = "ncncn")
-#Don't need this since want all vars in spreadsheet anyway:     select(GEOID,COUNTY,deaths1,wrong_county1,wrong_deaths_co1)
+#R should usually be able to detect character (c) vs. numeric (n) automatically based on first 1000 rows but making sure with col_types below 
+#Can use pipes (%/%) to tell R that final tables (e.g., d.mssa00) should only have selected variables and other changes specified
+#Without pipes would have to rename table (e.g., d.new_mssa00)
+
+d.correct <- read_csv(path(myPlace,"censusTracts/myData","Deaths_County_Corrected.csv"), col_types = "ncncn") %>%
+            mutate(GEOID      = paste0("0",GEOID), #Add "0" to beginning of GEOID as it's shown in some databases
+                   inDEATHS   = 1)  # this creates the indicator variable for this data set
 
 
-#Use pipes to tell R that final tables (e.g., d.mssa00) should only have selected variables
 d.mssa00  <- read_csv(path(myPlace,"censusTracts/myData","mssa00.csv"))  %>%
-            select(GEOID,COUNTY,POP2000,POP2000CIV)
-d.mssa00  <- read_csv(path(myPlace,"censusTracts/myData","mssa00.csv")) %>%
-                  select(GEOID,COUNTY,POP2000,POP2000CIV)
+            mutate(GEOID      = paste0("0",GEOID),
+                   county     = COUNTY,
+                   inMSSA00   = 1) %>%  
+            select(GEOID,county,inMSSA00, POP2000,POP2000CIV)
+
 
 
 d.mssa13 <- read_csv(path(myPlace,"censusTracts/myData","mssa13.csv")) %>%
             mutate(GEOID      = paste0("0",GEOID),
                    county     = COUNTY,
-                   inMSSA13   = 1,  # this creates the indicator variable for this data set
+                   inMSSA13   = 1,  
                    POP2013    = pop2013,
                    POP2013CIV = pop2013civ) %>%
             select(GEOID,county,inMSSA13,POP2013,POP2013CIV)
 
 
 d.pov <- read_csv(path(myPlace,"censusTracts/myData","pov_2006_10.csv")) %>%
-                select(GEOID,COUNTY)
+            mutate(GEOID      = paste0("0",GEOID),
+                   inPOV      = 1) %>%  
+            select(GEOID,county,inPOV)
+
+
 d.group <- read_csv(path(myPlace,"censusTracts/myData","SVI_CDC_group_living.csv")) %>%
-                select(GEOID,COUNTY,tot_pop_grp,e_groupQ)
+            mutate(GEOID      = paste0("0",GEOID),
+                   county     = COUNTY,
+                   inGROUP    = 1) %>% 
+            select(GEOID,county,inGROUP,tot_pop_grp,e_groupQ)
+
+
 #Have to use col_types below or R gets confused by one very big area of water way down the list
 d.shape <- read_csv(path(myPlace,"censusTracts/myData","tracts_tiger.csv"),col_types = "nnnnnc") %>%
-                select(GEOID,COUNTY)
+            mutate(GEOID      = paste0("0",GEOID),
+                   inSHAPE    = 1) %>% 
+            select(GEOID,county,inSHAPE)
 
 
 
-#MS: make geoid 11 digits with 0
-#Michael's script was above the code below "d.raw..." but it would apply to all
-#Postponing this for now since all GEOIDs in imported files should have same number of digits
 
 #Guessing for now we're using the corrected deaths file with totals for all years as before, 
 #but CCB shows for each year as in the raw file below, so why did we do that? 
-                
 d.raw      <- read_csv(path(myPlace,"censusTracts/myData","rawDeaths.csv"),col_types = "ncnc") %>%
                 group_by(GEOID,county) %>%
                 summarize(n=sum(Ndeaths))
