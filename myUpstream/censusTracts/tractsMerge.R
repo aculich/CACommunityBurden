@@ -5,11 +5,14 @@ library(readr)
 library(dplyr)
 library(tigris) #Added this one per Zev's instructions below
 
-myDrive  <- "h:"                            
+myDrive  <- "e:"                            
 myPlace  <- paste0(myDrive,"/0.CBD/myUpstream")  
 
 
 #R should usually be able to detect character (c) vs. numeric (n) automatically based on first 1000 rows but making sure with col_types below 
+# Yes, great
+
+
 #Can use pipes (%/%) to tell R that final tables (e.g., d.mssa00) should only have selected variables and other changes specified
 #Without pipes would have to rename table (e.g., d.new_mssa00)
 
@@ -27,20 +30,24 @@ d.mssa00  <- read_csv(path(myPlace,"censusTracts/myData","mssa00.csv"))  %>%
 
 
 
+# POP2013 and POP2013CIV are already upper case
 d.mssa13 <- read_csv(path(myPlace,"censusTracts/myData","mssa13.csv")) %>%
             mutate(GEOID      = paste0("0",GEOID),
                    county     = COUNTY,
-                   inMSSA13   = 1,  
-                   POP2013    = pop2013,
-                   POP2013CIV = pop2013civ) %>%
+                   inMSSA13   = 1
+                #   ,  
+                #   POP2013    = pop2013,
+                #   POP2013CIV = pop2013civ
+                ) %>%
             select(GEOID,county,inMSSA13,POP2013,POP2013CIV)
 
 
+# COUNTY is uppercase?
 d.pov <- read_csv(path(myPlace,"censusTracts/myData","pov_2006_10.csv")) %>%
             mutate(GEOID      = paste0("0",GEOID),
+                   county     = COUNTY,
                    inPOV      = 1) %>%  
             select(GEOID,county,inPOV)
-
 
 d.group <- read_csv(path(myPlace,"censusTracts/myData","SVI_CDC_group_living.csv")) %>%
             mutate(GEOID      = paste0("0",GEOID),
@@ -64,35 +71,64 @@ d.shape <- read_csv(path(myPlace,"censusTracts/myData","tracts_tiger.csv"),col_t
 #Error: `suffix` must be a character vector of length 2, not list of length 5
 
 
-#This works OK but could I do it with pipes and/or get rid of multiple county columns or give better names than .x or .y.y?
-merged <- full_join(d.correct, d.mssa00, by = "GEOID" , "county")
-merged <- full_join(merged, d.mssa13, by = "GEOID" , "county")
-merged <- full_join(merged, d.pov, by = "GEOID" , "county")
-merged <- full_join(merged, d.group, by = "GEOID" , "county")
-merged <- full_join(merged, d.shape, by = "GEOID" , "county")
 
+# Yes, we don't want all the extra county x, y etc
+# #This works OK but could I do it with pipes and/or get rid of multiple county columns or give better names than .x or .y.y?
+# merged <- full_join(d.correct, d.mssa00, by = "GEOID" , "county")
+# merged <- full_join(merged, d.mssa13, by = "GEOID" , "county")
+# merged <- full_join(merged, d.pov, by = "GEOID" , "county")
+# merged <- full_join(merged, d.group, by = "GEOID" , "county")
+# merged <- full_join(merged, d.shape, by = "GEOID" , "county")
+# 
 
+# This won't work with the %>% at the end, and still extra counties etc
+# #This looks better if we're confident we don't need to see multiple county columns
+# merged <- full_join(d.correct, d.mssa00, by = "GEOID" , "county") %>%
+#           full_join(merged, d.mssa13, by = "GEOID" , "county") %>%
+#           full_join(merged, d.pov, by = "GEOID" , "county") %>%
+#           full_join(merged, d.group, by = "GEOID" , "county") %>%
+#           full_join(merged, d.shape, by = "GEOID" , "county") %>%
+# 
+#
 
-
-#This looks better if we're confident we don't need to see multiple county columns
-merged <- full_join(d.correct, d.mssa00, by = "GEOID" , "county") %>%
-          full_join(merged, d.mssa13, by = "GEOID" , "county") %>%
-          full_join(merged, d.pov, by = "GEOID" , "county") %>%
-          full_join(merged, d.group, by = "GEOID" , "county") %>%
-          full_join(merged, d.shape, by = "GEOID" , "county") %>%
-
-
-#Better yet get rid of 2nd county column too, don't need to match on county?
-  merged <- full_join(d.correct, d.mssa00, by = "GEOID") %>%
-  full_join(merged, d.mssa13, by = "GEOID") %>%
-  full_join(merged, d.pov, by = "GEOID") %>%
-  full_join(merged, d.group, by = "GEOID") %>%
-  full_join(merged, d.shape, by = "GEOID") %>%
-
+#Still extra counties,...
+# #Better yet get rid of 2nd county column too, don't need to match on county?  I think we do...
+#   merged <- full_join(d.correct, d.mssa00, by = "GEOID") %>%
+#   full_join(merged, d.mssa13, by = "GEOID") %>%
+#   full_join(merged, d.pov, by = "GEOID") %>%
+#   full_join(merged, d.group, by = "GEOID") %>%
+#   full_join(merged, d.shape, by = "GEOID") #  %>% can't have this here....
+# 
   
   
+# this is how we can match on GEOID and county.  We don's have to use mergeVec, it is just "neat" that way
+  mergeVec <- c("GEOID" , "county")
+  merged <- full_join(d.correct, d.mssa00, by = mergeVec)  %>%
+            full_join(d.mssa13, by = mergeVec)             %>%
+            full_join(d.pov,    by = mergeVec)             %>%
+            full_join(d.group,  by = mergeVec)             %>%
+            full_join(d.shape,  by = mergeVec) 
+    
   
-  #Guessing for now we're using the corrected deaths file with totals for all years as before, 
+merged <- merged %>%
+           mutate(inCA         = ifelse(substr(GEOID,1,2) == "06",T,F),
+                  somePop      = ifelse(POP2013 != 0,T,F),
+                  percentInst  = (POP2013-POP2013CIV)/POP2013) 
+            
+
+table( merged$inCA , merged$somePop,useNA = "ifany")  
+
+nopop <- filter(merged,inCA & !somePop)
+
+hist(merged$percentInst,breaks=100)
+
+
+censusWorkMaybe <- merged %>%
+                   filter( inCA & somePop) %>%
+                   select(-POP2000,-POP2000CIV)
+
+
+#Guessing for now we're using the corrected deaths file with totals for all years as before, 
 #but CCB shows for each year as in the raw file below, so why did we do that? 
 #d.raw      <- read_csv(path(myPlace,"censusTracts/myData","rawDeaths.csv"),col_types = "ncnc") %>%
  #               group_by(GEOID,county) %>%
